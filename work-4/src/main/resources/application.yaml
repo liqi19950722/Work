@@ -1,0 +1,21 @@
+management:
+  endpoint:
+    env:
+      enabled: true
+      post:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include:
+         - health
+         - env
+         - circuitbreakers
+logging:
+  level:
+    com:
+      acme:
+        biz:
+          BizApplication: DEBUG
+
+
