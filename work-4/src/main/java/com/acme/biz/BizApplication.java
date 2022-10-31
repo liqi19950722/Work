@@ -80,12 +80,19 @@ public class BizApplication {
 
                         }
 
-                        CircuitBreaker circuitBreaker = circuitBreakerRegistry.circuitBreaker(instance);
-                        if (log.isDebugEnabled()) {
-                            log.debug("instance {} state {}", instance, circuitBreaker.getState());
+                        Optional<CircuitBreaker> optionalCircuitBreaker = circuitBreakerRegistry.find(instance);
+                        if (optionalCircuitBreaker.isPresent() ) {
+                            if (log.isDebugEnabled()) {
+                                CircuitBreaker old = optionalCircuitBreaker.get();
+                                log.debug("instance {} state {}", instance, old.getState());
+                            }
+                            // 重建
+                            CircuitBreaker newOne = CircuitBreaker.of(instance, circuitBreakerProperties.createCircuitBreakerConfig(instance, properties, customizerMap));
+                            circuitBreakerRegistry.replace(instance, newOne);
+                        } else {
+                            // 新建
+                            circuitBreakerRegistry.circuitBreaker(instance, circuitBreakerProperties.createCircuitBreakerConfig(instance, properties, customizerMap));
                         }
-                        // 重建
-                        circuitBreakerRegistry.circuitBreaker(instance, circuitBreakerProperties.createCircuitBreakerConfig(instance, properties, customizerMap));
                     });
                 }
             });
