@@ -31,32 +31,6 @@ public class ServiceConsumerApplication {
     }
 
     @Bean
-    public ApplicationRunner applicationRunner(@Autowired EurekaClient eurekaClient) {
-        return args -> {
-            // serviceWeightMap key: spring application name; value: Map key: ip+port value: weight
-            ConcurrentMap<String, ConcurrentMap<String, Integer> > serviceWeightMap = new ConcurrentHashMap<>();
-
-            // 获取服务注册时间
-            List<InstanceInfo> infos = eurekaClient.getInstancesByVipAddress("service-provider", false);
-            ConcurrentMap<String, Integer> weightMap = serviceWeightMap.computeIfAbsent("service-provider", key -> new ConcurrentHashMap<>());
-            infos.forEach(instance -> {
-                long registrationTimestamp = instance.getLeaseInfo().getRegistrationTimestamp();
-                long uptime = System.currentTimeMillis() - registrationTimestamp;
-                long warmup = 10 * 60 * 1000;
-                long weight = 1;
-                System.out.println(registrationTimestamp);
-                System.out.println(uptime);
-                int ww = (int) ( uptime / ((float) warmup / weight));
-                System.out.println(ww);
-                String serviceId = instance.getIPAddr()+":"+instance.getPort();
-                weightMap.computeIfAbsent(serviceId, k-> ww);
-            });
-
-            System.out.println(serviceWeightMap);
-        };
-    }
-
-    @Bean
     public RibbonClientSpecification ribbonClientSpecification() {
         RibbonClientSpecification ribbonClientSpecification = new RibbonClientSpecification();
         ribbonClientSpecification.setName("service-provider");
