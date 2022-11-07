@@ -10,7 +10,7 @@ public class CustomRibbonClientConfiguration {
     @Bean
     public IRule ribbonRule(IClientConfig config) {
         RoundRobinBasedUptimeRule rule = new RoundRobinBasedUptimeRule();
-//        rule.initWithNiwsConfig(config);
+        rule.initWithNiwsConfig(config);
         return rule;
     }
 }

@@ -19,10 +19,12 @@ public class RoundRobinBasedUptimeRule extends AbstractLoadBalancerRule {
 
     private final ConcurrentMap<String, WeightedRoundRobin> serviceWeightMap = new ConcurrentHashMap<>();
 
+    private IClientConfig clientConfig;
     @Override
     public void initWithNiwsConfig(IClientConfig clientConfig) {
 
         System.out.println(clientConfig);
+        this.clientConfig = clientConfig;
     }
 
     @Override
