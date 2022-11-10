@@ -108,10 +108,10 @@ public class RoundRobinBasedUptimeRule extends AbstractLoadBalancerRule {
 
     private int getActualServerWeight(DiscoveryEnabledServer discoveryEnabledServer) {
         int serverWeight = getServerWeight(discoveryEnabledServer); // 服务器权重
-        long registrationTimestamp = discoveryEnabledServer.getInstanceInfo().getLeaseInfo().getRegistrationTimestamp();
+        long startTime = Long.parseLong(discoveryEnabledServer.getInstanceInfo().getMetadata().get("startTime"));
         int actualWeight = serverWeight;
-        if (serverWeight > 0 && registrationTimestamp > 0) {
-            long uptime = System.currentTimeMillis() - registrationTimestamp;
+        if (serverWeight > 0 && startTime > 0) {
+            long uptime = System.currentTimeMillis() - startTime;
             long serverWarmup = getServerWarmup(discoveryEnabledServer); // 服务器预热时间
             if (serverWarmup > 0 && uptime < serverWarmup) {
                 int ww = (int) (uptime / ((float) serverWarmup / serverWeight));
