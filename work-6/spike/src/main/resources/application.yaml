@@ -1,0 +1,9 @@
+spring:
+  redis:
+    url: redis://default:redispw@localhost:49153
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
