@@ -1,0 +1,38 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: biz-application
+  profiles:
+    active: dev
+
+management:
+  endpoints:
+    enabled-by-default: false
+    web:
+      exposure:
+        include:
+          - health
+          - metrics
+          - prometheus
+  endpoint:
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+    influx: false
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      profiles: ${spring.profiles.active}
+    export:
+      logging:
+        enabled: true
+      influx:
+        enabled: true
+        uri: http://localhost:8086
+        org: hangzhou
+        bucket: demo
+        token: 06AuxHXahTz_S0OpGnYL7w4ptg33zUmlY4vm7wYBadpYFnxcfwh4mBjaC8KUaSy0z7FomOv8dU4oSvf4L9r7Vg==
+
