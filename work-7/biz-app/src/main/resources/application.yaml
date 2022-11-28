@@ -28,9 +28,9 @@ management:
       profiles: ${spring.profiles.active}
     export:
       logging:
-        enabled: true
+        enabled: false
       influx:
-        enabled: true
+        enabled: false
         uri: http://localhost:8086
         org: hangzhou
         bucket: demo

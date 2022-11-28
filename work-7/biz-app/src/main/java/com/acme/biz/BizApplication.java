@@ -1,11 +1,14 @@
 package com.acme.biz;
 
+import com.acme.biz.actuate.autoconfigure.metrics.export.influx.logging.InfluxMeterLoggingTask;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,6 +21,12 @@ public class BizApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(BizApplication.class, args);
+    }
+
+
+    @Bean
+    public InfluxMeterLoggingTask task(MeterRegistry registry) {
+        return new InfluxMeterLoggingTask(registry);
     }
 }
 
