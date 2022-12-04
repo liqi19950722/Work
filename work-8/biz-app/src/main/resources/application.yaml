@@ -1,0 +1,4 @@
+bytebuddy:
+  logging:
+    service: com.acme.biz.service
+    controller: com.acme.biz.controller
