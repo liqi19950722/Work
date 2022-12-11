@@ -1,0 +1,21 @@
+server:
+  port: 10001
+spring:
+  cloud:
+    gateway:
+      routes:
+      - id: biz-app
+        uri: http://localhost:8080/
+        predicates:
+        - Path=/foo
+management:
+  endpoints:
+    enabled-by-default: false
+    web:
+      exposure:
+        include:
+          - health
+          - metrics
+  endpoint:
+    metrics:
+      enabled: true
