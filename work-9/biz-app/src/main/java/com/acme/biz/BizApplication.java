@@ -1,5 +1,7 @@
 package com.acme.biz;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,8 +16,11 @@ public class BizApplication {
 
 @RestController
 class FooController {
+    private static final Logger logger = LoggerFactory.getLogger(FooController.class);
+
     @GetMapping(value = "/foo")
     public String foo() {
+        logger.info("foo");
         return "foo";
     }
 }
