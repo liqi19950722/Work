@@ -19,3 +19,7 @@ management:
   endpoint:
     metrics:
       enabled: true
+
+logging:
+  level:
+    org.springframework.cloud.sleuth.instrument.web.TraceWebFilter: DEBUG
