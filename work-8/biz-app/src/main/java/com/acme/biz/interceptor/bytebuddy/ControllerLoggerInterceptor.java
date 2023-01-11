@@ -12,7 +12,7 @@ import java.util.Arrays;
 import java.util.concurrent.Callable;
 
 public class ControllerLoggerInterceptor {
-    private static final Logger logger = LoggerFactory.getLogger(ServiceLoggerInterceptor.class);
+    private static final Logger logger = LoggerFactory.getLogger(ControllerLoggerInterceptor.class);
 
     public ControllerLoggerInterceptor() {
     }
