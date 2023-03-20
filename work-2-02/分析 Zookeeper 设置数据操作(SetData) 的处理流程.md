@@ -41,19 +41,16 @@ if (r.getErr() != 0) {
 return response.getStat();
 ```
 
-```plantuml
-@startuml
-skinparam responseMessageBelowArrow true
-skinparam sequenceMessageAlign left
-autonumber 
+```mermaid
+sequenceDiagram
 
-Zookeeper -> Zookeeper: new RequestHeader(); \nnew SetDataRequest(); \nnew SetDataResponse();
-Zookeeper -> ClientCnxn: cnxn.submitRequest(header, request, response, null)
-ClientCnxn -> ClientCnxn: queuePacket();
-ClientCnxn -> ClientCnxn: waitForPacketFinish();
-ClientCnxn --> Zookeeper: syncWait
-Zookeeper -> Zookeeper: response.getStat();
-@enduml
+Zookeeper ->> Zookeeper: new RequestHeader()<br/> new SetDataRequest()<br/> new SetDataResponse();
+Zookeeper ->> ClientCnxn: cnxn.submitRequest(header, request, response, null)
+ClientCnxn ->> ClientCnxn: queuePacket();
+ClientCnxn ->> ClientCnxn: waitForPacketFinish();
+ClientCnxn -->> Zookeeper: syncWait
+Zookeeper ->> Zookeeper: response.getStat();
+
 ```
 
 异步发送  `org.apache.zookeeper.ZooKeeper#setData(java.lang.String, byte[], int, org.apache.zookeeper.AsyncCallback.StatCallback, java.lang.Object)`  
@@ -62,17 +59,13 @@ Zookeeper -> Zookeeper: response.getStat();
 cnxn.queuePacket(h, new ReplyHeader(), request, response, cb, clientPath, serverPath, ctx, null);
 ```
 
-```plantuml
-@startuml
-skinparam responseMessageBelowArrow true
-skinparam sequenceMessageAlign left
-autonumber 
+```mermaid
+sequenceDiagram
 
-Zookeeper -> Zookeeper: new RequestHeader(); \nnew SetDataRequest(); \nnew SetDataResponse();
-Zookeeper -> ClientCnxn: cnxn.queuePacket(header, request, response, callback, ctx)
+Zookeeper ->> Zookeeper: new RequestHeader()<br/> new SetDataRequest() new SetDataResponse();
+Zookeeper ->> ClientCnxn: cnxn.queuePacket(header, request, response, callback, ctx)
+ClientCnxn ->> ClientCnxn: queuePacket(); 
 
-ClientCnxn -> ClientCnxn: queuePacket(); #red
-@enduml
 ```
 
 ### `queuePacket()` Packet入队
@@ -93,14 +86,15 @@ ClientCnxn -> ClientCnxn: queuePacket(); #red
        clientCnxnSocket.introduce(this, sessionId, outgoingQueue);
    }
    ```
+
    SendThread运行时，初始化`outgoingQueue`到`ClientCnxnSocket`中
 
 #### `ClientCnxnSocket`
 
-```plantuml
-class ClientCnxnSocket
-class ClientCnxnSocketNetty extends ClientCnxnSocket
-class ClientCnxnSocketNIO extends ClientCnxnSocket
+```mermaid
+classDiagram
+ClientCnxnSocket <|-- ClientCnxnSocketNIO
+ClientCnxnSocket <|-- ClientCnxnSocketNetty
 ```
 
 通过配置`zookeeper.clientCnxnSocket`确定使用**Netty**还是**Java NIO**
@@ -137,31 +131,30 @@ Do transportation work:
 
 `org.apache.zookeeper.ClientCnxnSocketNetty#doTransport`
 
-```plantuml
-@startuml
-SendThread -> ClientCnxnSocketNetty:  clientCnxnSocket.doTransport()
-ClientCnxnSocketNetty -> OutgoingQueue: poll() 
-OutgoingQueue --> ClientCnxnSocketNetty: Packet
-ClientCnxnSocketNetty -> ClientCnxnSocketNetty: doWrite(Packet)
-ClientCnxnSocketNetty -> PendingQueue: add(Packet)
-ClientCnxnSocketNetty -> ClientCnxnSocketNetty: sendPktOnly(Packet)
-Packet -> Packet :p.createBB()
+```mermaid
+sequenceDiagram
+SendThread ->> ClientCnxnSocketNetty:  clientCnxnSocket.doTransport()
+ClientCnxnSocketNetty ->> OutgoingQueue: poll() 
+OutgoingQueue -->> ClientCnxnSocketNetty: Packet
+ClientCnxnSocketNetty ->> ClientCnxnSocketNetty: doWrite(Packet)
+ClientCnxnSocketNetty ->> PendingQueue: add(Packet)
+ClientCnxnSocketNetty ->> ClientCnxnSocketNetty: sendPktOnly(Packet)
+Packet ->> Packet :p.createBB()
 
-@enduml
 ```
 
 `org.apache.zookeeper.ClientCnxnSocketNIO#doTransport`
 
-```plantuml
-@startuml
-SendThread -> ClientCnxnSocketNIO:  clientCnxnSocket.doTransport()
-ClientCnxnSocketNIO -> ClientCnxnSocketNIO: doIo() 
-ClientCnxnSocketNIO --> OutgoingQueue: findSendablePacket()
-OutgoingQueue --> ClientCnxnSocketNIO: Packet
-Packet -> Packet :p.createBB()
-ClientCnxnSocketNIO -> ClientCnxnSocketNIO: write()
-ClientCnxnSocketNIO -> PendingQueue: add(Packet)
-@enduml
+```mermaid
+sequenceDiagram
+SendThread ->> ClientCnxnSocketNIO:  clientCnxnSocket.doTransport()
+ClientCnxnSocketNIO ->> ClientCnxnSocketNIO: doIo() 
+ClientCnxnSocketNIO ->> OutgoingQueue: findSendablePacket()
+OutgoingQueue -->> ClientCnxnSocketNIO: Packet
+Packet ->> Packet :p.createBB()
+ClientCnxnSocketNIO ->> ClientCnxnSocketNIO: write()
+ClientCnxnSocketNIO ->> PendingQueue: add(Packet)
+
 ```
 
 ## Server 端处理请求
