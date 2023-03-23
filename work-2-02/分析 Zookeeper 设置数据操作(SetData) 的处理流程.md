@@ -231,9 +231,12 @@ sequenceDiagram
     incomingBuffer ->> RequestHeader: 读取header
     incomingBuffer ->> RequestRecord: 读取record
     NIOServerCnxn ->> ZooKeeperServer: ZooKeeperServer.processPacket(NIOServerCnxn, RequestHeader,RequestRecord)
-    
-    
 ```
+
+- 1 accept thread, which accepts new connections and assigns to a selector thread
+- 1-N selector threads, each of which selects on 1/N of the connections.The reason the factory supports more than one selector thread is that with large numbers of connections, select() itself can become aperformance bottleneck.
+- 0-M socket I/O worker threads, which perform basic socket reads and writes. If configured with 0 worker threads, the selector threads do the socket I/O directly.
+- 1   connection expiration thread, which closes idle connections; this is necessary to expire connections on which no session is established.
 
 #### Netty 实现
 
