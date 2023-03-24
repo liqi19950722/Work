@@ -257,9 +257,9 @@ sequenceDiagram
 ```
 
 总结一下两种实现
-基于JavaNIO的实现比Netty复杂
-Netty提供了便利的Reactor模型，而在JavaNIO中需要自己实现Reactor模型
-整体思路是
+基于JavaNIO的实现比Netty复杂  
+Netty提供了便利的Reactor模型，而在JavaNIO中需要自己实现Reactor模型  
+整体思路是：
 
 1. accept()连接
 2. 读取数据加入缓冲buffer，生成`RequestHeader`和`RequestRecord`
@@ -340,6 +340,7 @@ sequenceDiagram
 2. `ZookeeperServer`在创建时，构建了如下执行链`PrepRequestProcessor -> SyncRequestProcessor -> FinalRequestProcessor`
 3. `PrepRequestProcessor`,`SyncRequestProcessor`提交`Request`的方式与`RequestThrottler`相同，都是先入队，异步轮询`take()`队列中的`Request`
 4. `PrepRequestProcessor`负责记录`Data`的变化， `SyncRequestProcessor`负责刷新zookeeperDB，`FinalRequestProcessor` 负责向`RequestPathMetricsCollector`注册变化的`Path`
+
 PrepRequestProcessor
 
 ```java
