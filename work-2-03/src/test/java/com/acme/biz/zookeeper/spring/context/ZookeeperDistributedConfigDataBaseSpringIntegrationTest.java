@@ -16,15 +16,15 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
-import static com.acme.biz.zookeeper.spring.context.DistributedConfigSpringIntergrationTest.Constant.*;
+import static com.acme.biz.zookeeper.spring.context.ZookeeperDistributedConfigDataBaseSpringIntegrationTest.Constant.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringJUnitConfig(classes = {
-        DistributedConfigSpringIntergrationTest.class,
+        ZookeeperDistributedConfigDataBaseSpringIntegrationTest.class,
         DistributedConfigEnvironmentLifecycle.class,
         SpringBridgeDistributedConfigEventListener.class
 })
-class DistributedConfigSpringIntergrationTest extends TestConfiguration {
+class ZookeeperDistributedConfigDataBaseSpringIntegrationTest extends TestConfiguration {
 
     @Bean
     public DistributedConfigDataBase zookeeperDistributedConfigDataBase(@Autowired CuratorFramework curatorFramework,
