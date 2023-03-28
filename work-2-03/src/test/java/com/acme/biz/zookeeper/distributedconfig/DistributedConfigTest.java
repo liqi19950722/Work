@@ -1,53 +1,41 @@
 package com.acme.biz.zookeeper.distributedconfig;
 
+import com.acme.biz.zookeeper.ZookeeperContainerEnv;
 import com.acme.biz.zookeeper.distributedconfig.zookeeper.ZookeeperDistributedConfigDataBase;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.curator.framework.CuratorFramework;
-import org.apache.curator.framework.CuratorFrameworkFactory;
-import org.apache.curator.retry.ExponentialBackoffRetry;
-import org.apache.curator.utils.DefaultTracerDriver;
 import org.apache.zookeeper.data.Stat;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
 
 import java.io.Serializable;
-import java.util.concurrent.TimeUnit;
+import java.util.Map;
 
-import static com.acme.biz.zookeeper.distributedconfig.DistributedConfigTest.Constant.*;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static com.acme.biz.zookeeper.distributedconfig.DistributedConfigDataBase.DEFAULT_APPLICATION_NAME;
+import static com.acme.biz.zookeeper.distributedconfig.DistributedConfigDataBase.DEFAULT_CONFIG_NAMESPACE;
+import static com.acme.biz.zookeeper.distributedconfig.DistributedConfigTest.Constant.APPLICATION_NAME;
+import static com.acme.biz.zookeeper.distributedconfig.DistributedConfigTest.Constant.CONFIG_NAMESPACE;
+import static org.junit.jupiter.api.Assertions.*;
 
-public class DistributedConfigTest {
+public class DistributedConfigTest extends ZookeeperContainerEnv {
 
-    @Container
-    private static final GenericContainer<?> zookeeper = new GenericContainer<>("zookeeper:3.8.0")
-            .withAccessToHost(true)
-            .withExposedPorts(ZOOKEEPER_PORT);
-    private static CuratorFramework curatorFramework;
+    private CuratorFramework curatorFramework;
 
-    private static DistributedConfigDataBase distributedConfigDataBase;
+    private DistributedConfigDataBase distributedConfigDataBase;
 
     @BeforeAll
-    public static void init() throws InterruptedException {
-        zookeeper.start();
-        String connectString = zookeeper.getHost() + ":" + zookeeper.getMappedPort(ZOOKEEPER_PORT);
-        curatorFramework = CuratorFrameworkFactory.builder()
-                .connectString(connectString)
-                .sessionTimeoutMs(60000)
-                .connectionTimeoutMs(15000)
-                .retryPolicy(new ExponentialBackoffRetry(50, 10, 500))
-                .build();
-
-        curatorFramework.getZookeeperClient().setTracerDriver(new DefaultTracerDriver());
-        curatorFramework.start();
-        curatorFramework.blockUntilConnected(10, TimeUnit.SECONDS);
-
-        distributedConfigDataBase = new ZookeeperDistributedConfigDataBase(curatorFramework, CONFIG_NAMESPACE, APPLICATION_NAME);
+    public static void init() throws Exception {
+        zookeeperStart();
+        createCuratorFramework();
     }
 
+    @BeforeEach
+    public void setUp() {
+        curatorFramework = getCuratorFramework();
+        distributedConfigDataBase = new ZookeeperDistributedConfigDataBase(curatorFramework);
+    }
     // /{prefix}/{application}/{profile}/...
     // user.name  -> /config/application/default/user/name
     // user.age  -> /config/application/default/user/age
@@ -60,7 +48,7 @@ public class DistributedConfigTest {
         doPutConfigData("user.age", 18, "/" + CONFIG_NAMESPACE + "/" + APPLICATION_NAME + "/default/user/age");
     }
 
-    private static <T extends Serializable> void doPutConfigData(String key, T value, String path) throws Exception {
+    private <T extends Serializable> void doPutConfigData(String key, T value, String path) throws Exception {
         distributedConfigDataBase.putConfig(key, value);
         Stat node = curatorFramework.checkExists().forPath(path);
 
@@ -68,15 +56,30 @@ public class DistributedConfigTest {
         assertEquals(value.getClass().cast(SerializationUtils.deserialize(curatorFramework.getData().forPath(path))), value);
     }
 
+    @Test
+    public void should_load_config_from_zookeeper_based_distributed() {
+        String key_1 = "distributed.config.test";
+        String value_1 = "value1";
+        distributedConfigDataBase.putConfig(key_1, value_1);
+        String key_2 = "distributed.config.test.user.name";
+        String value_2 = "value2";
+        distributedConfigDataBase.putConfig(key_2, value_2);
+
+        Map<String, String> config = distributedConfigDataBase.loadConfig();
+        assertTrue(config.containsKey("distributed.config.test"));
+        assertTrue(config.containsKey("distributed.config.test.user.name"));
+        assertEquals(config.get("distributed.config.test"), "value1");
+        assertEquals(config.get("distributed.config.test.user.name"), "value2");
+    }
+
     @AfterAll
     public static void close() {
-        curatorFramework.close();
-        zookeeper.close();
+        getCuratorFramework().close();
+        zookeeperClose();
     }
 
     interface Constant {
-        int ZOOKEEPER_PORT = 2181;
-        String CONFIG_NAMESPACE = "config";
-        String APPLICATION_NAME = "application";
+        String CONFIG_NAMESPACE = DEFAULT_CONFIG_NAMESPACE;
+        String APPLICATION_NAME = DEFAULT_APPLICATION_NAME;
     }
 }
