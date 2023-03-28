@@ -2,7 +2,7 @@ package com.acme.biz.zookeeper.spring.context.event;
 
 import com.acme.biz.zookeeper.distributedconfig.event.DistributedConfigChangedEvent;
 import com.acme.biz.zookeeper.distributedconfig.event.DistributedConfigEventListener;
-import com.acme.biz.zookeeper.distributedconfig.zookeeper.event.EventSource;
+import com.acme.biz.zookeeper.distributedconfig.zookeeper.EventContext;
 import com.acme.biz.zookeeper.distributedconfig.zookeeper.event.ZookeeperDistributedConfigChangedEvent;
 import com.acme.biz.zookeeper.spring.core.env.DistributedConfigPropertySource;
 import org.springframework.context.ApplicationEventPublisher;
@@ -22,14 +22,14 @@ public class SpringBridgeDistributedConfigEventListener implements DistributedCo
     private Boolean isConfigurableEnvironment = false;
 
     @Override
-    public void onDistributedConfigReceived(DistributedConfigChangedEvent<?> distributedConfigEvent) {
+    public void onDistributedConfigReceived(DistributedConfigChangedEvent distributedConfigEvent) {
         if (isConfigurableEnvironment) {
             String propertySourceName = distributedConfigEvent.getSource();
             MutablePropertySources propertySources = configurableEnvironment.getPropertySources();
             PropertySource<?> propertySource = propertySources.get(propertySourceName);
             if (propertySource instanceof DistributedConfigPropertySource distributedConfigPropertySource) {
                 if (distributedConfigEvent instanceof ZookeeperDistributedConfigChangedEvent zookeeper) {
-                    EventSource context = zookeeper.getContext();
+                    EventContext context = zookeeper.getContext();
                     if (StringUtils.hasText(context.propertyKey())) {
                         distributedConfigPropertySource.setProperty(context.propertyKey(), context.propertyValue());
                     }

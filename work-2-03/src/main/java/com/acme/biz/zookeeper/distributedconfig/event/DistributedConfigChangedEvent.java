@@ -1,10 +1,12 @@
 package com.acme.biz.zookeeper.distributedconfig.event;
 
+import com.acme.biz.zookeeper.distributedconfig.zookeeper.EventContext;
+
 import java.util.EventObject;
 
-public abstract class DistributedConfigChangedEvent<T> extends EventObject {
+public abstract class DistributedConfigChangedEvent extends EventObject {
     private final long timestamp;
-    protected T context;
+    protected EventContext context;
 
 
     public DistributedConfigChangedEvent(String source) {
@@ -21,5 +23,5 @@ public abstract class DistributedConfigChangedEvent<T> extends EventObject {
         return (String) super.getSource();
     }
 
-    public abstract T getContext();
+    public abstract EventContext getContext();
 }

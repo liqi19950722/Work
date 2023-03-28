@@ -4,6 +4,6 @@ import java.util.EventListener;
 
 public interface DistributedConfigEventListener extends EventListener {
 
-    default void onDistributedConfigReceived(DistributedConfigChangedEvent<?> distributedConfigEvent) {
+    default void onDistributedConfigReceived(DistributedConfigChangedEvent distributedConfigEvent) {
     }
 }
