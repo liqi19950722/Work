@@ -52,4 +52,9 @@ public class SpringBridgeDistributedConfigEventListener implements DistributedCo
         }
 
     }
+
+    @Override
+    public Integer order() {
+        return DEFAULT_ORDER + 1;
+    }
 }
