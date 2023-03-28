@@ -35,7 +35,7 @@ public abstract class ZookeeperContainerEnv {
 
         curatorFramework.getZookeeperClient().setTracerDriver(new DefaultTracerDriver());
         curatorFramework.start();
-        curatorFramework.blockUntilConnected(10, TimeUnit.SECONDS);
+        curatorFramework.blockUntilConnected(0, TimeUnit.SECONDS);
 
     }
 

@@ -16,10 +16,10 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
         "zookeeper.connectString=localhost:2181",
         "zookeeper.sessionTimeoutMs=60000",
         "zookeeper.connectionTimeoutMs=15000",
-        "zookeeper.blockUntilConnected=10",
         "zookeeper.baseSleepTimeMs=50",
         "zookeeper.maxRetries=10",
         "zookeeper.maxSleepMs=500",
+        "zookeeper.blockUntilConnected=0",
         "zookeeper.blockUntilConnectedTimeUnit=TimeUnit.SECONDS"
 })
 @SpringJUnitConfig(classes = {

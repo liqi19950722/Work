@@ -20,7 +20,7 @@ class CuratorFrameworkComponentTest extends TestConfiguration {
     @BeforeAll
     public static void init() throws Exception {
         zookeeperStart();
-        createCuratorFramework();
+//        createCuratorFramework();
     }
 
 
@@ -33,7 +33,7 @@ class CuratorFrameworkComponentTest extends TestConfiguration {
 
     @AfterAll
     public static void destroy() {
-        getCuratorFramework().close();
+//        getCuratorFramework().close();
         zookeeperClose();
     }
 }
