@@ -1,13 +1,24 @@
 package com.acme.biz.zookeeper.distributedconfig.zookeeper;
 
 import com.acme.biz.zookeeper.distributedconfig.DistributedConfigDataBase;
+import com.acme.biz.zookeeper.distributedconfig.event.DistributedConfigEventListener;
+import com.acme.biz.zookeeper.distributedconfig.zookeeper.event.EventSource;
+import com.acme.biz.zookeeper.distributedconfig.zookeeper.event.ZookeeperDistributedConfigChangedEvent;
 import org.apache.commons.lang3.SerializationUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.recipes.cache.ChildData;
+import org.apache.curator.framework.recipes.cache.CuratorCache;
+import org.apache.curator.framework.recipes.cache.CuratorCacheListener;
+import org.apache.curator.framework.recipes.cache.CuratorCacheListener.Type;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.data.Stat;
 
 import java.io.Serializable;
 import java.util.*;
+
+import static com.acme.biz.zookeeper.distributedconfig.DistributedConfigDataBase.DataBaseType.ZOOKEEPER;
 
 public class ZookeeperDistributedConfigDataBase implements DistributedConfigDataBase {
 
@@ -25,27 +36,65 @@ public class ZookeeperDistributedConfigDataBase implements DistributedConfigData
         return applicationName;
     }
 
-    private final List<ConfigProfile> profiles = Collections.synchronizedList(new ArrayList<>());
 
+    private final List<ConfigProfile> profiles = Collections.synchronizedList(new ArrayList<>());
+    private final List<DistributedConfigEventListener> listeners = Collections.synchronizedList(new ArrayList<>());
+
+    public ZookeeperDistributedConfigDataBase(CuratorFramework curatorFramework) {
+        this(curatorFramework, DistributedConfigDataBase.DEFAULT_CONFIG_NAMESPACE, DistributedConfigDataBase.DEFAULT_APPLICATION_NAME);
+    }
 
     public ZookeeperDistributedConfigDataBase(CuratorFramework curatorFramework, String configNamespace, String applicationName) {
         this.curatorFramework = curatorFramework;
         this.configNamespace = configNamespace;
         this.applicationName = applicationName;
         profiles.add(new ConfigProfile("default", 0));
+
+
+        profiles.forEach(profile -> {
+            String baseConfigPath = buildBaseConfigPath(profile.profileName());
+            CuratorCache curatorCache = CuratorCache.builder(curatorFramework, baseConfigPath).build();
+
+            curatorCache.listenable().addListener(CuratorCacheListener.builder()
+                    .forCreatesAndChanges((oldNode, node) -> {
+                        listeners.stream().sorted()
+                                .forEach(listener -> listener.onDistributedConfigReceived(
+                                        new ZookeeperDistributedConfigChangedEvent(buildPropertySourceName(), getEventSource(baseConfigPath, node,
+                                                oldNode == null ? Type.NODE_CREATED : Type.NODE_CHANGED))));
+                    })
+                    .forDeletes(deleteNode -> {
+                        listeners.stream().sorted()
+                                .forEach(listener -> listener.onDistributedConfigReceived(
+                                        new ZookeeperDistributedConfigChangedEvent(buildPropertySourceName(), getEventSource(baseConfigPath, deleteNode,
+                                                Type.NODE_DELETED))));
+                    })
+                    .build());
+            curatorCache.start();
+        });
     }
 
-    public ZookeeperDistributedConfigDataBase(CuratorFramework curatorFramework) {
-        this(curatorFramework, DistributedConfigDataBase.DEFAULT_CONFIG_NAMESPACE, DistributedConfigDataBase.DEFAULT_APPLICATION_NAME);
+    private EventSource getEventSource(String baseConfigPath, ChildData node, Type type) {
+        byte[] data = node.getData();
+        if (data != null && data.length > 0) {
+            String propertyValue = SerializationUtils.deserialize(data).toString();
+            return new EventSource(type, getPropertyKey(baseConfigPath, node.getPath()),
+                    propertyValue);
+        } else {
+            return new EventSource(type, getPropertyKey(baseConfigPath, node.getPath()), "");
+        }
     }
-
 
     @Override
     public <T extends Serializable> void putConfig(ConfigProfile configProfile, String key, T value) {
 
         String path = buildBaseConfigPath(configProfile.profileName()) + "/" + key.replace('.', '/');
         try {
-            curatorFramework.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(path, SerializationUtils.serialize(value));
+            Stat stat = curatorFramework.checkExists().forPath(path);
+            if (stat == null) {
+                curatorFramework.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(path, SerializationUtils.serialize(value));
+            } else {
+                curatorFramework.setData().forPath(path, SerializationUtils.serialize(value));
+            }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -76,6 +125,18 @@ public class ZookeeperDistributedConfigDataBase implements DistributedConfigData
         return result;
     }
 
+    @Override
+    public void registerListener(DistributedConfigEventListener listener) {
+        if (!listeners.contains(listener)) {
+            listeners.add(listener);
+        }
+    }
+
+    @Override
+    public String getDataBaseType() {
+        return ZOOKEEPER.name().toLowerCase();
+    }
+
     private Map<String, String> doLoadConfig(String childPath, String basePath) {
         Map<String, String> properties = new HashMap<>();
 
@@ -90,14 +151,19 @@ public class ZookeeperDistributedConfigDataBase implements DistributedConfigData
             Optional.ofNullable(getData(path))
                     .filter(data -> data.length > 0)
                     .map(SerializationUtils::<String>deserialize)
-                    .ifPresent(value -> properties.put(getKey(basePath, path), value));
+                    .ifPresent(value -> properties.put(getPropertyKey(basePath, path), value));
 
         }
         return properties;
     }
 
-    private static String getKey(String basePath, String path) {
-        return path.replace(basePath + "/", "").replace('/', '.');
+    private static String getPropertyKey(String basePath, String path) {
+        String replaced = path.replace(basePath, "").replace('/', '.');
+        if (StringUtils.isEmpty(replaced)) {
+            return "";
+        }
+        return replaced.substring(1);
+
     }
 
 

@@ -1,25 +1,27 @@
 package com.acme.biz.zookeeper.distributedconfig;
 
 import com.acme.biz.zookeeper.ZookeeperContainerEnv;
+import com.acme.biz.zookeeper.distributedconfig.event.DistributedConfigChangedEvent;
+import com.acme.biz.zookeeper.distributedconfig.event.DistributedConfigEventListener;
 import com.acme.biz.zookeeper.distributedconfig.zookeeper.ZookeeperDistributedConfigDataBase;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.zookeeper.data.Stat;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
+import org.mockito.Mockito;
 
 import java.io.Serializable;
 import java.util.Map;
 
 import static com.acme.biz.zookeeper.distributedconfig.DistributedConfigDataBase.DEFAULT_APPLICATION_NAME;
 import static com.acme.biz.zookeeper.distributedconfig.DistributedConfigDataBase.DEFAULT_CONFIG_NAMESPACE;
-import static com.acme.biz.zookeeper.distributedconfig.DistributedConfigTest.Constant.APPLICATION_NAME;
-import static com.acme.biz.zookeeper.distributedconfig.DistributedConfigTest.Constant.CONFIG_NAMESPACE;
+import static com.acme.biz.zookeeper.distributedconfig.ZookeeperDistributedConfigDataBaseTest.Constant.*;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.verify;
 
-public class DistributedConfigTest extends ZookeeperContainerEnv {
+public class ZookeeperDistributedConfigDataBaseTest extends ZookeeperContainerEnv {
 
     private CuratorFramework curatorFramework;
 
@@ -58,18 +60,38 @@ public class DistributedConfigTest extends ZookeeperContainerEnv {
 
     @Test
     public void should_load_config_from_zookeeper_based_distributed() {
-        String key_1 = "distributed.config.test";
-        String value_1 = "value1";
-        distributedConfigDataBase.putConfig(key_1, value_1);
-        String key_2 = "distributed.config.test.user.name";
-        String value_2 = "value2";
-        distributedConfigDataBase.putConfig(key_2, value_2);
+        distributedConfigDataBase.putConfig(KEY_1, VALUE_1);
+        distributedConfigDataBase.putConfig(KEY_2, VALUE_2);
 
         Map<String, String> config = distributedConfigDataBase.loadConfig();
-        assertTrue(config.containsKey("distributed.config.test"));
-        assertTrue(config.containsKey("distributed.config.test.user.name"));
-        assertEquals(config.get("distributed.config.test"), "value1");
-        assertEquals(config.get("distributed.config.test.user.name"), "value2");
+        assertTrue(config.containsKey(KEY_1));
+        assertTrue(config.containsKey(KEY_2));
+        assertEquals(config.get(KEY_1), VALUE_1);
+        assertEquals(config.get(KEY_2), VALUE_2);
+    }
+
+    @Test
+    public void should_put_config_when_key_is_same() throws Exception {
+        Assertions.assertDoesNotThrow(() -> {
+            distributedConfigDataBase.putConfig(KEY_1, VALUE_1);
+            distributedConfigDataBase.putConfig(KEY_1, VALUE_2);
+        });
+        String path = "/" + CONFIG_NAMESPACE + "/" + APPLICATION_NAME + "/default/" + KEY_1.replace('.', '/');
+        byte[] data = curatorFramework.getData().forPath(path);
+        assertEquals(VALUE_2, SerializationUtils.deserialize(data));
+    }
+
+    @Test
+    public void should_listen_node_change_event() throws Exception {
+        DistributedConfigEventListener listener = Mockito.mock(DistributedConfigEventListener.class);
+        distributedConfigDataBase.registerListener(listener);
+
+        distributedConfigDataBase.putConfig(KEY_1, VALUE_1);
+        distributedConfigDataBase.putConfig(KEY_1, VALUE_2);
+        distributedConfigDataBase.putConfig(KEY_2, VALUE_2);
+        curatorFramework.delete().forPath("/" + CONFIG_NAMESPACE + "/" + APPLICATION_NAME + "/default/" + KEY_2.replace('.', '/'));
+
+        verify(listener,atLeast(1)).onDistributedConfigReceived(any(DistributedConfigChangedEvent.class));
     }
 
     @AfterAll
@@ -81,5 +103,9 @@ public class DistributedConfigTest extends ZookeeperContainerEnv {
     interface Constant {
         String CONFIG_NAMESPACE = DEFAULT_CONFIG_NAMESPACE;
         String APPLICATION_NAME = DEFAULT_APPLICATION_NAME;
+        String KEY_1 = "distributed.config.test";
+        String VALUE_1 = "value1";
+        String KEY_2 = "distributed.config.test.user.name";
+        String VALUE_2 = "value2";
     }
 }

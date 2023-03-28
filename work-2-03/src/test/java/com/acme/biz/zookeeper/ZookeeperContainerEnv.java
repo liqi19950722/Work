@@ -50,7 +50,7 @@ public abstract class ZookeeperContainerEnv {
         return ZOOKEEPER.getHost() + ":" + ZOOKEEPER.getMappedPort(ZOOKEEPER_PORT);
     }
 
-    public static class Constant {
-        public static final int ZOOKEEPER_PORT = 2181;
+    interface Constant {
+       int ZOOKEEPER_PORT = 2181;
     }
 }

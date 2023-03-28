@@ -10,10 +10,13 @@ import org.springframework.core.env.Environment;
 import org.springframework.core.env.MutablePropertySources;
 import org.springframework.lang.NonNull;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 public class DistributedConfigEnvironmentLifecycle implements SmartLifecycle, EnvironmentAware {
     private ConfigurableEnvironment environment;
     private Boolean isConfigurableEnvironment = false;
 
+    private final AtomicBoolean isRunning = new AtomicBoolean(false);
     @Autowired
     private DistributedConfigDataBase distributedConfigDataBase;
 
@@ -22,22 +25,19 @@ public class DistributedConfigEnvironmentLifecycle implements SmartLifecycle, En
         if (isConfigurableEnvironment) {
             MutablePropertySources propertySources = environment.getPropertySources();
             propertySources.addLast(
-                    new DistributedConfigPropertySource(buildPropertySourceName(), distributedConfigDataBase));
+                    new DistributedConfigPropertySource(distributedConfigDataBase.buildPropertySourceName(), distributedConfigDataBase));
         }
-    }
-
-    private String buildPropertySourceName() {
-        return DistributedConfigPropertySource.PROPERTY_SOURCE_NAME + "-" + distributedConfigDataBase.getConfigNamespace() + "-" + distributedConfigDataBase.getApplicationName();
+        this.isRunning.lazySet(true);
     }
 
     @Override
     public void stop() {
-
+        isRunning.compareAndSet(true, false);
     }
 
     @Override
     public boolean isRunning() {
-        return false;
+        return isRunning.get();
     }
 
     @Override

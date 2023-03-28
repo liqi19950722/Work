@@ -23,7 +23,11 @@ public class DistributedConfigPropertySource extends EnumerablePropertySource<Di
     }
 
     @Override
-    public Object getProperty(String name) {
+    public String getProperty(String name) {
         return properties.get(name);
+    }
+
+    public void setProperty(String name, String value) {
+        properties.put(name, value);
     }
 }
