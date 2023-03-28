@@ -38,7 +38,7 @@ public interface DistributedConfigDataBase {
 
         @Override
         public int compareTo(ConfigProfile o) {
-            return Comparator.<Integer>naturalOrder().compare(this.order(), o.order());
+            return Comparator.<Integer>reverseOrder().compare(this.order(), o.order());
         }
     }
     enum DataBaseType {
