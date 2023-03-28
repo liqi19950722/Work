@@ -11,7 +11,7 @@ public interface DistributedConfigEventListener extends EventListener, Comparabl
     }
     @Override
     default int compareTo(DistributedConfigEventListener o) {
-        return Comparator.<Integer>naturalOrder().compare(order(), o.order());
+        return Comparator.<Integer>reverseOrder().compare(order(), o.order());
     }
     default void onDistributedConfigReceived(DistributedConfigChangedEvent distributedConfigEvent) {
     }
