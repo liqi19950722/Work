@@ -38,7 +38,7 @@ public class TestConfiguration extends ZookeeperContainerEnv{
     static class BeanConfig {
         @Bean
         public CustomEditorConfigurer CustomEditorConfigurer() {
-            CustomEditorConfigurer customEditorConfigurer = new CustomEditorConfigurer();
+            var customEditorConfigurer = new CustomEditorConfigurer();
             customEditorConfigurer.setPropertyEditorRegistrars(new PropertyEditorRegistrar[]{new TimeUnitEditorRegister()});
             return customEditorConfigurer;
         }

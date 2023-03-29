@@ -26,7 +26,7 @@ public class ZookeeperComponentConfiguration {
                                              @Value(value = "${zookeeper.maxSleepMs}") int maxSleep,
                                              @Value(value = "${zookeeper.blockUntilConnected}") int blockUntilConnected,
                                              @Value(value = "${zookeeper.blockUntilConnectedTimeUnit}") TimeUnit blockUntilConnectedTimeUnit) throws Exception {
-        CuratorFramework curator = CuratorFrameworkFactory.builder()
+        var curator = CuratorFrameworkFactory.builder()
                 .connectString(connectString)
                 .sessionTimeoutMs(sessionTimeout)
                 .connectionTimeoutMs(connectionTimeout)

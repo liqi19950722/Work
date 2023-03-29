@@ -18,7 +18,7 @@ class CuratorFrameworkComponentTest extends TestConfiguration {
     ApplicationContext applicationContext;
 
     @BeforeAll
-    public static void init() throws Exception {
+    public static void init() {
         zookeeperStart();
 //        createCuratorFramework();
     }
@@ -27,7 +27,7 @@ class CuratorFrameworkComponentTest extends TestConfiguration {
     @Test
     public void should_get_curator_framework_bean_form_application_context() {
 
-        CuratorFramework component = applicationContext.getBean(CuratorFramework.class);
+        var component = applicationContext.getBean(CuratorFramework.class);
         assertNotNull(component);
     }
 

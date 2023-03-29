@@ -4,9 +4,9 @@ import com.acme.biz.zookeeper.ZookeeperContainerEnv;
 import com.acme.biz.zookeeper.distributedconfig.event.DistributedConfigChangedEvent;
 import com.acme.biz.zookeeper.distributedconfig.event.DistributedConfigEventListener;
 import com.acme.biz.zookeeper.distributedconfig.zookeeper.ZookeeperDistributedConfigDataBase;
-import org.apache.commons.lang3.SerializationUtils;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.curator.framework.CuratorFramework;
-import org.apache.zookeeper.data.Stat;
 import org.junit.jupiter.api.*;
 import org.mockito.Mockito;
 
@@ -27,6 +27,8 @@ public class ZookeeperDistributedConfigDataBaseTest extends ZookeeperContainerEn
 
     private DistributedConfigDataBase distributedConfigDataBase;
 
+    private ObjectMapper objectMapper;
+
     @BeforeAll
     public static void init() throws Exception {
         zookeeperStart();
@@ -37,6 +39,7 @@ public class ZookeeperDistributedConfigDataBaseTest extends ZookeeperContainerEn
     public void setUp() {
         curatorFramework = getCuratorFramework();
         distributedConfigDataBase = new ZookeeperDistributedConfigDataBase(curatorFramework);
+        objectMapper = new ObjectMapper();
     }
     // /{prefix}/{application}/{profile}/...
     // user.name  -> /config/application/default/user/name
@@ -52,10 +55,11 @@ public class ZookeeperDistributedConfigDataBaseTest extends ZookeeperContainerEn
 
     private <T extends Serializable> void doPutConfigData(String key, T value, String path) throws Exception {
         distributedConfigDataBase.putConfig(key, value);
-        Stat node = curatorFramework.checkExists().forPath(path);
+        var node = curatorFramework.checkExists().forPath(path);
 
         assertNotNull(node);
-        assertEquals(value.getClass().cast(SerializationUtils.deserialize(curatorFramework.getData().forPath(path))), value);
+        byte[] bytes = curatorFramework.getData().forPath(path);
+        assertEquals(DistributedConfigDataBase.JsonSerializer.deserialize(bytes).data(), value);
     }
 
     @Test
@@ -76,14 +80,14 @@ public class ZookeeperDistributedConfigDataBaseTest extends ZookeeperContainerEn
             distributedConfigDataBase.putConfig(KEY_1, VALUE_1);
             distributedConfigDataBase.putConfig(KEY_1, VALUE_2);
         });
-        String path = "/" + CONFIG_NAMESPACE + "/" + APPLICATION_NAME + "/default/" + KEY_1.replace('.', '/');
-        byte[] data = curatorFramework.getData().forPath(path);
-        assertEquals(VALUE_2, SerializationUtils.deserialize(data));
+        var path = "/" + CONFIG_NAMESPACE + "/" + APPLICATION_NAME + "/default/" + KEY_1.replace('.', '/');
+        var data = curatorFramework.getData().forPath(path);
+        assertEquals(VALUE_2, DistributedConfigDataBase.JsonSerializer.deserialize(data).data());
     }
 
     @Test
     public void should_listen_node_change_event() throws Exception {
-        DistributedConfigEventListener listener = Mockito.mock(DistributedConfigEventListener.class);
+        var listener = Mockito.mock(DistributedConfigEventListener.class);
         distributedConfigDataBase.registerListener(listener);
 
         distributedConfigDataBase.putConfig(KEY_1, VALUE_1);
@@ -91,8 +95,23 @@ public class ZookeeperDistributedConfigDataBaseTest extends ZookeeperContainerEn
         distributedConfigDataBase.putConfig(KEY_2, VALUE_2);
         curatorFramework.delete().forPath("/" + CONFIG_NAMESPACE + "/" + APPLICATION_NAME + "/default/" + KEY_2.replace('.', '/'));
 
-        verify(listener,atLeast(1)).onDistributedConfigReceived(any(DistributedConfigChangedEvent.class));
+        verify(listener, atLeast(1)).onDistributedConfigReceived(any(DistributedConfigChangedEvent.class));
     }
+
+    @Test
+    public void should_set_config_meta_data_into_zookeeper() throws Exception {
+        distributedConfigDataBase.putConfig(KEY_1, VALUE_1);
+
+        var bytes = curatorFramework.getData().forPath("/" + CONFIG_NAMESPACE + "/" + APPLICATION_NAME + "/default/" + KEY_1.replace('.', '/'));
+        DistributedConfigDataBase.ConfigValue<String> value = objectMapper.readValue(bytes, new TypeReference<>() {
+        });
+        DistributedConfigDataBase.ConfigValueMetadata metadata = value.metadata();
+        String data = value.data();
+        assertEquals(data, VALUE_1);
+        assertEquals(metadata.contentType(), "text");
+        assertNotNull(metadata.contentLength());
+    }
+
 
     @AfterAll
     public static void close() {

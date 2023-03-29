@@ -4,7 +4,6 @@ import com.acme.biz.zookeeper.distributedconfig.DistributedConfigDataBase;
 import com.acme.biz.zookeeper.distributedconfig.event.DistributedConfigEventListener;
 import com.acme.biz.zookeeper.distributedconfig.zookeeper.ZookeeperDistributedConfigDataBase;
 import com.acme.biz.zookeeper.spring.context.event.SpringBridgeDistributedConfigEventListener;
-import org.apache.commons.lang3.SerializationUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -15,6 +14,8 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+
+import java.util.concurrent.TimeUnit;
 
 import static com.acme.biz.zookeeper.spring.context.ZookeeperDistributedConfigDataBaseSpringIntegrationTest.Constant.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -46,27 +47,30 @@ class ZookeeperDistributedConfigDataBaseSpringIntegrationTest extends TestConfig
         zookeeperStart();
         createCuratorFramework();
 
-        getCuratorFramework().create().creatingParentsIfNeeded().forPath("/distributed-config/application/default/distributed/config/test", SerializationUtils.serialize("test"));
+        var data = new DistributedConfigDataBase.ConfigValue<>(new DistributedConfigDataBase.ConfigValueMetadata("text", 1), "test");
+        getCuratorFramework().create().creatingParentsIfNeeded().forPath("/distributed-config/application/default/distributed/config/test",
+                DistributedConfigDataBase.JsonSerializer.serialize(data));
     }
 
 
     @Test
     public void should_set_property_from_distributed_config_via_spring_lifecycle() {
-        DistributedConfigEnvironmentLifecycle bean = applicationContext.getBean(DistributedConfigEnvironmentLifecycle.class);
+        var bean = applicationContext.getBean(DistributedConfigEnvironmentLifecycle.class);
         assertNotNull(bean);
 
         // /distributed-config/application/default/distributed/config/test
-        String property = environment.getProperty(TEST_KEY);
+        var property = environment.getProperty(TEST_KEY);
         assertNotNull(property);
         assertEquals(TEST_VALUE, property);
     }
 
     @Test
-    public void should_change_property_when_distributed_config_changed() {
-        String oldValue = environment.getProperty(TEST_KEY);
+    public void should_change_property_when_distributed_config_changed() throws InterruptedException {
+        var oldValue = environment.getProperty(TEST_KEY);
         distributedConfigDataBase.putConfig(TEST_KEY, CHANGE_VALUE);
+        TimeUnit.SECONDS.sleep(2L); // 等监听线程刷新配置
 
-        String newValue = environment.getProperty(TEST_KEY);
+        var newValue = environment.getProperty(TEST_KEY);
 
         assertNotEquals(newValue, oldValue);
         assertEquals(newValue, CHANGE_VALUE);

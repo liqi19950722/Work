@@ -17,7 +17,7 @@ public class TimeUnitEditorRegister implements PropertyEditorRegistrar {
 
         @Override
         public void setAsText(String text) throws IllegalArgumentException {
-            String processedText = processText(text);
+            var processedText = processText(text);
 
             Arrays.stream(TimeUnit.values())
                     .filter(value -> value.name().equals(processedText))

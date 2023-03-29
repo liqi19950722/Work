@@ -7,7 +7,6 @@ import org.springframework.context.EnvironmentAware;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.Environment;
-import org.springframework.core.env.MutablePropertySources;
 import org.springframework.lang.NonNull;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -23,8 +22,7 @@ public class DistributedConfigEnvironmentLifecycle implements SmartLifecycle, En
     @Override
     public void start() {
         if (isConfigurableEnvironment) {
-            MutablePropertySources propertySources = environment.getPropertySources();
-            propertySources.addLast(
+            environment.getPropertySources().addLast(
                     new DistributedConfigPropertySource(distributedConfigDataBase.buildPropertySourceName(), distributedConfigDataBase));
         }
         this.isRunning.lazySet(true);
