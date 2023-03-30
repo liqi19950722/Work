@@ -3,7 +3,6 @@ package com.acme.biz.zookeeper.spring.context.event;
 import com.acme.biz.zookeeper.distributedconfig.event.DistributedConfigChangedEvent;
 import com.acme.biz.zookeeper.distributedconfig.event.DistributedConfigEventListener;
 import com.acme.biz.zookeeper.distributedconfig.event.EventContext;
-import com.acme.biz.zookeeper.distributedconfig.zookeeper.event.ZookeeperDistributedConfigChangedEvent;
 import com.acme.biz.zookeeper.spring.core.env.DistributedConfigPropertySource;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
@@ -27,21 +26,16 @@ public class SpringBridgeDistributedConfigEventListener implements DistributedCo
             var propertySources = configurableEnvironment.getPropertySources();
             var propertySource = propertySources.get(distributedConfigEvent.getSource());
             if (propertySource instanceof DistributedConfigPropertySource distributedConfigPropertySource) {
-                Optional.of(getEventContext(distributedConfigEvent))
-                        .filter(ctx -> StringUtils.hasText(getEventContext(distributedConfigEvent).propertyKey()))
-                        .ifPresent(ctx -> {
-                            distributedConfigPropertySource.setProperty(getEventContext(distributedConfigEvent).propertyKey(), getEventContext(distributedConfigEvent).propertyValue());
-                            applicationEventPublisher.publishEvent(new DistributedConfigPropertySourceChangedEvent(distributedConfigEvent.getContext()));
-                        });
+                Optional.of(EventContext.getEventContext(distributedConfigEvent))
+                        .filter(eventContext -> StringUtils.hasText(eventContext.propertyKey()))
+                        .ifPresent(eventContext -> changePropertySource(eventContext, distributedConfigEvent, distributedConfigPropertySource));
             }
         }
     }
 
-    private static EventContext getEventContext(DistributedConfigChangedEvent distributedConfigEvent) {
-        if (distributedConfigEvent instanceof ZookeeperDistributedConfigChangedEvent zookeeper) {
-            return zookeeper.getContext();
-        }
-        throw new IllegalStateException("还未实现: " + distributedConfigEvent.getClass());
+    private void changePropertySource(EventContext eventContext, DistributedConfigChangedEvent distributedConfigEvent, DistributedConfigPropertySource distributedConfigPropertySource) {
+        distributedConfigPropertySource.setProperty(eventContext.propertyKey(), eventContext.propertyValue());
+        applicationEventPublisher.publishEvent(new DistributedConfigPropertySourceChangedEvent(distributedConfigEvent.getContext()));
     }
 
     @Override
