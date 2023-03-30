@@ -1,7 +1,5 @@
 package com.acme.biz.zookeeper.distributedconfig.event;
 
-import com.acme.biz.zookeeper.distributedconfig.zookeeper.EventContext;
-
 import java.util.EventObject;
 
 public abstract class DistributedConfigChangedEvent extends EventObject {

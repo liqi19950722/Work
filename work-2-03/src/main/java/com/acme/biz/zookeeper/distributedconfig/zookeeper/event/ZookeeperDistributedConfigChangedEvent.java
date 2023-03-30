@@ -1,7 +1,7 @@
 package com.acme.biz.zookeeper.distributedconfig.zookeeper.event;
 
 import com.acme.biz.zookeeper.distributedconfig.event.DistributedConfigChangedEvent;
-import com.acme.biz.zookeeper.distributedconfig.zookeeper.EventContext;
+import com.acme.biz.zookeeper.distributedconfig.event.EventContext;
 
 public class ZookeeperDistributedConfigChangedEvent extends DistributedConfigChangedEvent {
     public ZookeeperDistributedConfigChangedEvent(String source, EventSource context) {
