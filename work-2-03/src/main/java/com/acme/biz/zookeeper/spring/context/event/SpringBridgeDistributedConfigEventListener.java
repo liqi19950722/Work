@@ -28,14 +28,14 @@ public class SpringBridgeDistributedConfigEventListener implements DistributedCo
             if (propertySource instanceof DistributedConfigPropertySource distributedConfigPropertySource) {
                 Optional.of(EventContext.getEventContext(distributedConfigEvent))
                         .filter(eventContext -> StringUtils.hasText(eventContext.propertyKey()))
-                        .ifPresent(eventContext -> changePropertySource(eventContext, distributedConfigEvent, distributedConfigPropertySource));
+                        .ifPresent(eventContext -> changePropertySource(eventContext, distributedConfigPropertySource));
             }
         }
     }
 
-    private void changePropertySource(EventContext eventContext, DistributedConfigChangedEvent distributedConfigEvent, DistributedConfigPropertySource distributedConfigPropertySource) {
+    private void changePropertySource(EventContext eventContext, DistributedConfigPropertySource distributedConfigPropertySource) {
         distributedConfigPropertySource.setProperty(eventContext.propertyKey(), eventContext.propertyValue());
-        applicationEventPublisher.publishEvent(new DistributedConfigPropertySourceChangedEvent(distributedConfigEvent.getContext()));
+        applicationEventPublisher.publishEvent(new DistributedConfigPropertySourceChangedEvent(eventContext));
     }
 
     @Override
