@@ -2,6 +2,7 @@ package com.acme.biz.zookeeper.spring.context.event;
 
 import com.acme.biz.zookeeper.distributedconfig.event.DistributedConfigChangedEvent;
 import com.acme.biz.zookeeper.distributedconfig.event.DistributedConfigEventListener;
+import com.acme.biz.zookeeper.distributedconfig.event.EventContext;
 import com.acme.biz.zookeeper.distributedconfig.zookeeper.event.ZookeeperDistributedConfigChangedEvent;
 import com.acme.biz.zookeeper.spring.core.env.DistributedConfigPropertySource;
 import org.springframework.context.ApplicationEventPublisher;
@@ -11,6 +12,8 @@ import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.Environment;
 import org.springframework.lang.NonNull;
 import org.springframework.util.StringUtils;
+
+import java.util.Optional;
 
 public class SpringBridgeDistributedConfigEventListener implements DistributedConfigEventListener, EnvironmentAware, ApplicationEventPublisherAware {
 
@@ -24,15 +27,21 @@ public class SpringBridgeDistributedConfigEventListener implements DistributedCo
             var propertySources = configurableEnvironment.getPropertySources();
             var propertySource = propertySources.get(distributedConfigEvent.getSource());
             if (propertySource instanceof DistributedConfigPropertySource distributedConfigPropertySource) {
-                if (distributedConfigEvent instanceof ZookeeperDistributedConfigChangedEvent zookeeper) {
-                    var context = zookeeper.getContext();
-                    if (StringUtils.hasText(context.propertyKey())) {
-                        distributedConfigPropertySource.setProperty(context.propertyKey(), context.propertyValue());
-                        applicationEventPublisher.publishEvent(new DistributedConfigPropertySourceChangedEvent(distributedConfigEvent.getContext()));
-                    }
-                }
+                Optional.of(getEventContext(distributedConfigEvent))
+                        .filter(ctx -> StringUtils.hasText(getEventContext(distributedConfigEvent).propertyKey()))
+                        .ifPresent(ctx -> {
+                            distributedConfigPropertySource.setProperty(getEventContext(distributedConfigEvent).propertyKey(), getEventContext(distributedConfigEvent).propertyValue());
+                            applicationEventPublisher.publishEvent(new DistributedConfigPropertySourceChangedEvent(distributedConfigEvent.getContext()));
+                        });
             }
         }
+    }
+
+    private static EventContext getEventContext(DistributedConfigChangedEvent distributedConfigEvent) {
+        if (distributedConfigEvent instanceof ZookeeperDistributedConfigChangedEvent zookeeper) {
+            return zookeeper.getContext();
+        }
+        throw new IllegalStateException("还未实现: " + distributedConfigEvent.getClass());
     }
 
     @Override
