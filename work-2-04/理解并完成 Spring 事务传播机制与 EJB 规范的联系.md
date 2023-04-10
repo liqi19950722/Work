@@ -149,7 +149,7 @@ flowchart LR
     triggerBeforeCommit(triggerBeforeCommit) -->
     riggerBeforeCompletion(triggerBeforeCompletion) --> 
     isNewTransaction{isNewTransaction} --> |Yes| doCommit(commit) --> triggerAfterCommit
-    isNewTransaction(isNewTransaction) -->
+    isNewTransaction{isNewTransaction} -->
     triggerAfterCommit(triggerAfterCommit) -->
     triggerAfterCompletion(triggerAfterCompletion)
 ```
@@ -165,6 +165,6 @@ flowchart LR
     triggerBeforeCompletion(triggerBeforeCompletion) -->
     isNewTransaction{isNewTransaction} --> |Yes| doRollback(rollback) --> triggerAfterCompletion(triggerAfterCompletion)
     triggerAfterCompletion --> cleanupAfterCompletion(cleanupAfterCompletion)
-    isNewTransaction{isNewTransaction} --> |No| hasTransaction(hasTransaction) --> |Yes| doSetRollbackOnly(doSetRollbackOnly) --> triggerAfterCompletion
-    hasTransaction(hasTransaction) --> |No| triggerAfterCompletion    
+    isNewTransaction{isNewTransaction} --> |No| hasTransaction{hasTransaction} --> |Yes| doSetRollbackOnly(doSetRollbackOnly) --> triggerAfterCompletion
+    hasTransaction{hasTransaction} --> |No| triggerAfterCompletion    
 ```
