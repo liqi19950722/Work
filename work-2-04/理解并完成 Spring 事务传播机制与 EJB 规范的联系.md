@@ -55,7 +55,7 @@ Container-Managed Transaction Demarcation for Business Methods
     title: REQUIRES_NEW
     ---
     flowchart LR
-        hasTransaction(has Transaction?) --> |Yes| suspends(suspends transaction) --> new(new transaction) --> invoke(invoke method)  --pass new transaction--> 
+        hasTransaction{has Transaction?} --> |Yes| suspends(suspends transaction) --> new(new transaction) --> invoke(invoke method)  --pass new transaction--> 
         invokeOther(invoke other method)
         --> commit(commit) -->
         resumes(resumes transaction)
