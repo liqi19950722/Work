@@ -115,12 +115,12 @@ TransactionStatus getTransaction(@Nullable TransactionDefinition definition) thr
 2. `isExistingTransaction(transaction)` // 判断是否已经存在事务
 3. 存在事务
    - NEVER throw IllegalTransactionStateException()
-   - NOT_SUPPORTED
-  suspend(transaction) // 挂起当前事务
-  prepareTransactionStatus()// 生成TransactionStatus transaction = null; newTransaction = false;
-   - REQUIRES_NEW
-  suspend(transaction) // 挂起当前事务
-  startTransaction() // 开启新事务
+   - NOT_SUPPORTED  
+  suspend(transaction) // 挂起当前事务  
+  prepareTransactionStatus() // 生成TransactionStatus transaction = null; newTransaction = false;
+   - REQUIRES_NEW  
+  suspend(transaction) // 挂起当前事务  
+  startTransaction() // 开启新事务  
   resumeAfterBeginException() // 开启事务的过程中异常了就resume
    - MANDATORY
    - REQUIRED
@@ -129,12 +129,12 @@ TransactionStatus getTransaction(@Nullable TransactionDefinition definition) thr
 4. 不存在事务
    - MANDATORY  throw IllegalTransactionStateException()
    - REQUIRED
-   - REQUIRES_NEW
-  suspend(null) // 不挂起任何事务
+   - REQUIRES_NEW  
+  suspend(null) // 不挂起任何事务  
   startTransaction() // 开启新事务 生成TransactionStatus transaction = transaction; newTransaction = true;
    - NOT_SUPPORTED
    - SUPPORTS
-   - NEVER
+   - NEVER  
   prepareTransactionStatus() // 生成TransactionStatus transaction = null; newTransaction = true;
 
 ## commit()
