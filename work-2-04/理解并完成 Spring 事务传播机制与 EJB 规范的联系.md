@@ -137,7 +137,7 @@ TransactionStatus getTransaction(@Nullable TransactionDefinition definition) thr
    - NEVER  
   prepareTransactionStatus() // 生成TransactionStatus transaction = null; newTransaction = true;
 
-## commit()
+### commit()
 
 ```java
 void commit(TransactionStatus status) throws TransactionException;
@@ -168,3 +168,222 @@ flowchart LR
     isNewTransaction{isNewTransaction} --> |No| hasTransaction{hasTransaction} --> |Yes| doSetRollbackOnly(doSetRollbackOnly) --> triggerAfterCompletion
     hasTransaction{hasTransaction} --> |No| triggerAfterCompletion    
 ```
+
+## AbstractPlatformTransactionManager 抽象
+
+- `org.springframework.transaction.support.AbstractPlatformTransactionManager#doGetTransaction`
+- `org.springframework.transaction.support.AbstractPlatformTransactionManager#isExistingTransaction`
+- `org.springframework.transaction.support.AbstractPlatformTransactionManager#doResume`
+- `org.springframework.transaction.support.AbstractPlatformTransactionManager#doSuspend`
+- `org.springframework.transaction.support.AbstractPlatformTransactionManager#doBegin`
+- `org.springframework.transaction.support.AbstractPlatformTransactionManager#doCommit`
+- `org.springframework.transaction.support.AbstractPlatformTransactionManager#doRollback`
+
+### DataSourceTransactionManager实现
+
+#### `doGetTransaction()`
+
+```java
+protected abstract Object doGetTransaction() throws TransactionException;
+
+@Override
+protected Object doGetTransaction() {
+    DataSourceTransactionObject txObject = new DataSourceTransactionObject();
+    txObject.setSavepointAllowed(isNestedTransactionAllowed());
+    ConnectionHolder conHolder = (ConnectionHolder) TransactionSynchronizationManager.getResource(obtainDataSource());
+    txObject.setConnectionHolder(conHolder, false);
+    return txObject;
+}
+```
+
+创建一个ConnectionHolder，以DataSource对象为key，ConnectionHolder对象为value绑定到ThreadLocal `Transactional resources`中
+
+##### ConnectionHolder  
+
+```mermaid
+classDiagram
+    class ResourceHolder
+    class ResourceHolderSupport
+    class ConnectionHolder
+    ResourceHolder <|-- ResourceHolderSupport
+    ResourceHolderSupport <|-- ConnectionHolder
+```
+
+##### TransactionSynchronizationManager
+
+```java
+private static final ThreadLocal<Map<Object, Object>> resources = new NamedThreadLocal<>("Transactional resources");
+
+private static final ThreadLocal<Set<TransactionSynchronization>> synchronizations = new NamedThreadLocal<>("Transaction synchronizations");
+
+private static final ThreadLocal<String> currentTransactionName = new NamedThreadLocal<>("Current transaction name");
+
+private static final ThreadLocal<Boolean> currentTransactionReadOnly = new NamedThreadLocal<>("Current transaction read-only status");
+
+private static final ThreadLocal<Integer> currentTransactionIsolationLevel = new NamedThreadLocal<>("Current transaction isolation level");
+
+private static final ThreadLocal<Boolean> actualTransactionActive = new NamedThreadLocal<>("Actual transaction active");
+```
+
+#### `isExistingTransaction()`
+
+```java
+protected boolean isExistingTransaction(Object transaction) throws TransactionException {
+    return false;
+}
+
+@Override
+protected boolean isExistingTransaction(Object transaction) {
+    DataSourceTransactionObject txObject = (DataSourceTransactionObject) transaction;
+    return (txObject.hasConnectionHolder() && txObject.getConnectionHolder().isTransactionActive());
+}
+```
+
+是否存在事务判断  
+`DataSourceTransactionObject` 是否有ConnectionHolder  
+ConnectionHolder是否激活事务
+
+#### `doBegin()`
+
+```java
+protected abstract void doBegin(Object transaction, TransactionDefinition definition) throws TransactionException;
+
+@Override
+protected void doBegin(Object transaction, TransactionDefinition definition) {
+    DataSourceTransactionObject txObject = (DataSourceTransactionObject) transaction;
+    Connection con = null;
+
+    try {
+        if (!txObject.hasConnectionHolder() ||
+                txObject.getConnectionHolder().isSynchronizedWithTransaction()) {
+            Connection newCon = obtainDataSource().getConnection();
+            if (logger.isDebugEnabled()) {
+                logger.debug("Acquired Connection [" + newCon + "] for JDBC transaction");
+            }
+            txObject.setConnectionHolder(new ConnectionHolder(newCon), true);
+        }
+
+        txObject.getConnectionHolder().setSynchronizedWithTransaction(true);
+        con = txObject.getConnectionHolder().getConnection();
+
+        Integer previousIsolationLevel = DataSourceUtils.prepareConnectionForTransaction(con, definition);
+        txObject.setPreviousIsolationLevel(previousIsolationLevel);
+        txObject.setReadOnly(definition.isReadOnly());
+
+        // Switch to manual commit if necessary. This is very expensive in some JDBC drivers,
+        // so we don't want to do it unnecessarily (for example if we've explicitly
+        // configured the connection pool to set it already).
+        if (con.getAutoCommit()) {
+            txObject.setMustRestoreAutoCommit(true);
+            if (logger.isDebugEnabled()) {
+                logger.debug("Switching JDBC Connection [" + con + "] to manual commit");
+            }
+            con.setAutoCommit(false);
+        }
+
+        prepareTransactionalConnection(con, definition);
+        txObject.getConnectionHolder().setTransactionActive(true);
+
+        int timeout = determineTimeout(definition);
+        if (timeout != TransactionDefinition.TIMEOUT_DEFAULT) {
+            txObject.getConnectionHolder().setTimeoutInSeconds(timeout);
+        }
+
+        // Bind the connection holder to the thread.
+        if (txObject.isNewConnectionHolder()) {
+            TransactionSynchronizationManager.bindResource(obtainDataSource(), txObject.getConnectionHolder());
+        }
+    }
+
+    catch (Throwable ex) {
+        if (txObject.isNewConnectionHolder()) {
+            DataSourceUtils.releaseConnection(con, obtainDataSource());
+            txObject.setConnectionHolder(null, false);
+        }
+        throw new CannotCreateTransactionException("Could not open JDBC Connection for transaction", ex);
+    }
+}
+```
+
+1. 判断是否存在ConnectionHolder，不存在则创建数据库连接
+2. 设置数据库隔离级别etc.  `DataSourceUtils.prepareConnectionForTransaction`
+3. 如果`isNewConnectionHolder` 绑定到ThreadLocal `Transactional resources`中
+
+#### `doSuspend()`
+
+```java
+protected Object doSuspend(Object transaction) throws TransactionException {
+    throw new TransactionSuspensionNotSupportedException("Transaction manager [" + getClass().getName() + "] does not support transaction suspension");
+}
+
+@Override
+protected Object doSuspend(Object transaction) {
+    DataSourceTransactionObject txObject = (DataSourceTransactionObject) transaction;
+    txObject.setConnectionHolder(null);
+    return TransactionSynchronizationManager.unbindResource(obtainDataSource());
+}
+```
+
+设置`ConnectionHolder`为null，`unbindResource`，并返回旧的`ConnectionHolder`，保存到`SuspendedResourcesHolder`中  
+开一个新的`ConnectionHolder`，旧的存起来
+
+#### `doResume()`
+
+```java
+protected void doResume(@Nullable Object transaction, Object suspendedResources) throws TransactionException {
+    throw new TransactionSuspensionNotSupportedException("Transaction manager [" + getClass().getName() + "] does not support transaction suspension");
+}
+
+@Override
+protected void doResume(@Nullable Object transaction, Object suspendedResources) {
+    TransactionSynchronizationManager.bindResource(obtainDataSource(), suspendedResources);
+}
+```
+
+把旧的`ConnectionHolder`从`SuspendedResourcesHolder`中取出来，重新绑定回ThreadLocal`Transactional resources`中
+
+#### `doCommit()`
+
+```java
+protected abstract void doCommit(DefaultTransactionStatus status) throws TransactionException;
+
+@Override
+protected void doCommit(DefaultTransactionStatus status) {
+    DataSourceTransactionObject txObject = (DataSourceTransactionObject) status.getTransaction();
+    Connection con = txObject.getConnectionHolder().getConnection();
+    if (status.isDebug()) {
+        logger.debug("Committing JDBC transaction on Connection [" + con + "]");
+    }
+    try {
+        con.commit();
+    }
+    catch (SQLException ex) {
+        throw translateException("JDBC commit", ex);
+    }
+}
+```
+
+执行`ConnectionHolder` 中的`connection.commit()`
+
+#### `doRollback()`
+
+```java
+protected abstract void doRollback(DefaultTransactionStatus status) throws TransactionException;
+
+@Override
+protected void doRollback(DefaultTransactionStatus status) {
+    DataSourceTransactionObject txObject = (DataSourceTransactionObject) status.getTransaction();
+    Connection con = txObject.getConnectionHolder().getConnection();
+    if (status.isDebug()) {
+        logger.debug("Rolling back JDBC transaction on Connection [" + con + "]");
+    }
+    try {
+        con.rollback();
+    }
+    catch (SQLException ex) {
+        throw translateException("JDBC rollback", ex);
+    }
+}
+```
+
+执行`ConnectionHolder` 中的`connection.rollback()`
