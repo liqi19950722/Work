@@ -124,7 +124,7 @@ TransactionStatus getTransaction(@Nullable TransactionDefinition definition) thr
   resumeAfterBeginException() // 开启事务的过程中异常了就resume
    - MANDATORY
    - REQUIRED
-   - SUPPORTS
+   - SUPPORTS  
   prepareTransactionStatus() // 生成TransactionStatus transaction = oldTransaction; newTransaction = false;
 4. 不存在事务
    - MANDATORY  throw IllegalTransactionStateException()
