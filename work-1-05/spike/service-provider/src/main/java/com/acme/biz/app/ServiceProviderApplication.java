@@ -3,28 +3,23 @@ package com.acme.biz.app;
 import com.netflix.appinfo.ApplicationInfoManager;
 import com.netflix.appinfo.HealthCheckHandler;
 import com.netflix.appinfo.InstanceInfo;
-import com.netflix.discovery.EurekaClient;
 import com.netflix.discovery.EurekaClientConfig;
-import org.checkerframework.checker.units.qual.A;
-import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.cloud.client.serviceregistry.AutoServiceRegistrationProperties;
 import org.springframework.cloud.netflix.eureka.*;
 import org.springframework.cloud.netflix.eureka.serviceregistry.EurekaRegistration;
 import org.springframework.cloud.netflix.eureka.serviceregistry.EurekaServiceRegistry;
-import org.springframework.cloud.util.ProxyUtils;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.springframework.cloud.netflix.eureka.EurekaClientConfigBean.DEFAULT_ZONE;
 
@@ -63,7 +58,7 @@ public class ServiceProviderApplication {
                                                  @Autowired ApplicationInfoManager applicationInfoManager,
                                                  @Autowired ApplicationContext applicationContext,
                                                  @Autowired(
-            required = false) ObjectProvider<HealthCheckHandler> healthCheckHandler) {
+                                                         required = false) ObjectProvider<HealthCheckHandler> healthCheckHandler) {
 
         return (args) -> {
 
@@ -75,16 +70,17 @@ public class ServiceProviderApplication {
             registry.register(registration);
 
 
-
             EurekaClientConfigBean another = new EurekaClientConfigBean();
-            BeanUtils.copyProperties(eurekaClientConfig,another);
-            another.getServiceUrl().put(DEFAULT_ZONE, "http://localhost:8762/eureka/");
+            BeanUtils.copyProperties(eurekaClientConfig, another);
+            Map<String, String> serviceUrl = new HashMap<>();
+            serviceUrl.put(DEFAULT_ZONE, "http://localhost:8762/eureka/");
+            another.setServiceUrl(serviceUrl);
 
             InstanceInfo instanceInfo = new InstanceInfoFactory().create(instanceConfig);
             ApplicationInfoManager anotherApplicationInfoManager = new ApplicationInfoManager(instanceConfig, instanceInfo);
 
             CloudEurekaClient anotherCloudEurekaClient = new CloudEurekaClient(anotherApplicationInfoManager,
-                    eurekaClientConfig, applicationContext);
+                    another, applicationContext);
 
             EurekaRegistration anotherRegistration = EurekaRegistration.builder(instanceConfig).with(anotherApplicationInfoManager)
                     .with(anotherCloudEurekaClient).with(healthCheckHandler).build();
