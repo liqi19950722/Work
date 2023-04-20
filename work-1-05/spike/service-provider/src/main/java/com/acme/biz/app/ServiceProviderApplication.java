@@ -1,24 +1,32 @@
 package com.acme.biz.app;
 
 import com.netflix.appinfo.ApplicationInfoManager;
+import com.netflix.appinfo.HealthCheckHandler;
 import com.netflix.appinfo.InstanceInfo;
+import com.netflix.discovery.EurekaClient;
+import com.netflix.discovery.EurekaClientConfig;
+import org.checkerframework.checker.units.qual.A;
+import org.springframework.aop.support.AopUtils;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.cloud.client.discovery.event.InstancePreRegisteredEvent;
-import org.springframework.cloud.client.serviceregistry.Registration;
-import org.springframework.cloud.client.serviceregistry.ServiceRegistry;
-import org.springframework.cloud.netflix.eureka.EnableEurekaClient;
-import org.springframework.cloud.netflix.eureka.EurekaDiscoveryClient;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.cloud.client.serviceregistry.AutoServiceRegistrationProperties;
+import org.springframework.cloud.netflix.eureka.*;
 import org.springframework.cloud.netflix.eureka.serviceregistry.EurekaRegistration;
 import org.springframework.cloud.netflix.eureka.serviceregistry.EurekaServiceRegistry;
+import org.springframework.cloud.util.ProxyUtils;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.event.EventListener;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
-import java.util.Map;
+
+import static org.springframework.cloud.netflix.eureka.EurekaClientConfigBean.DEFAULT_ZONE;
 
 @EnableEurekaClient
 @SpringBootApplication
@@ -45,6 +53,42 @@ public class ServiceProviderApplication {
             InstanceInfo info = applicationInfoManager.getInfo();
             info.getMetadata().put("startTime", getStartTime());
             info.setIsDirty();
+        };
+    }
+
+    @Bean
+    public ApplicationRunner applicationRunner_2(@Autowired EurekaServiceRegistry registry,
+                                                 @Autowired EurekaClientConfig eurekaClientConfig,
+                                                 @Autowired CloudEurekaInstanceConfig instanceConfig,
+                                                 @Autowired ApplicationInfoManager applicationInfoManager,
+                                                 @Autowired ApplicationContext applicationContext,
+                                                 @Autowired(
+            required = false) ObjectProvider<HealthCheckHandler> healthCheckHandler) {
+
+        return (args) -> {
+
+
+            CloudEurekaClient cloudEurekaClient = new CloudEurekaClient(applicationInfoManager,
+                    eurekaClientConfig, applicationContext);
+            EurekaRegistration registration = EurekaRegistration.builder(instanceConfig).with(applicationInfoManager)
+                    .with(cloudEurekaClient).with(healthCheckHandler).build();
+            registry.register(registration);
+
+
+
+            EurekaClientConfigBean another = new EurekaClientConfigBean();
+            BeanUtils.copyProperties(eurekaClientConfig,another);
+            another.getServiceUrl().put(DEFAULT_ZONE, "http://localhost:8762/eureka/");
+
+            InstanceInfo instanceInfo = new InstanceInfoFactory().create(instanceConfig);
+            ApplicationInfoManager anotherApplicationInfoManager = new ApplicationInfoManager(instanceConfig, instanceInfo);
+
+            CloudEurekaClient anotherCloudEurekaClient = new CloudEurekaClient(anotherApplicationInfoManager,
+                    eurekaClientConfig, applicationContext);
+
+            EurekaRegistration anotherRegistration = EurekaRegistration.builder(instanceConfig).with(anotherApplicationInfoManager)
+                    .with(anotherCloudEurekaClient).with(healthCheckHandler).build();
+            registry.register(anotherRegistration);
         };
     }
 }
