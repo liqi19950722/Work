@@ -26,6 +26,7 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 import static com.acme.middleware.rpc.client.ExchangeFuture.createExchangeFuture;
@@ -70,13 +71,22 @@ public class ServiceInvocationHandler implements InvocationHandler {
     private Object execute(InvocationRequest request, Object proxy) {
         // 在 RPC 服务集群中选择其中一个实例（负载均衡）
         ServiceInstance serviceInstance = selectServiceProviderInstance();
+
+        processInvocationRequestBeforeExecute(request);
+
         // 与目标 RPC 服务器建联
         ChannelFuture channelFuture = rpcClient.connect(serviceInstance);
         // 发送请求（消息），关联 requestId
         sendRequest(request, channelFuture);
         // 创建请求对应的 Future 对象
         ExchangeFuture exchangeFuture = createExchangeFuture(request);
-
+        exchangeFuture.getPromise().addListener(feature -> {
+            if (feature.isSuccess()) {
+                processInvocationAfterExecute(feature.getNow(), null);
+            } else {
+                processInvocationAfterExecute(null, feature.cause());
+            }
+        });
         try {
             // 阻塞 RPC 服务器响应，直到对方将 Response（对应 requestId) 设置到 ExchangeFuture 所关联的 Promise
             // 即 Promise#setSuccess 或 Promise#setFailure 被调用
@@ -87,6 +97,22 @@ public class ServiceInvocationHandler implements InvocationHandler {
         }
 
         throw new IllegalStateException("Invocation failed!");
+    }
+
+    private void processInvocationRequestBeforeExecute(InvocationRequest request) {
+        rpcClient.getRequestBeforeExecuteProcessors()
+                .forEach(processor -> processor.processInvocationRequestBeforeExecute(request));
+    }
+
+    private void processInvocationAfterExecute(Object result, Throwable cause) {
+        if (Objects.nonNull(cause)) {
+            rpcClient.getRequestBeforeExecuteProcessors()
+                    .forEach(processor -> processor.executeFail(cause));
+
+        } else {
+            rpcClient.getRequestBeforeExecuteProcessors()
+                    .forEach(processor -> processor.executeSuccess(cause));
+        }
     }
 
     private void sendRequest(InvocationRequest request, ChannelFuture channelFuture) {

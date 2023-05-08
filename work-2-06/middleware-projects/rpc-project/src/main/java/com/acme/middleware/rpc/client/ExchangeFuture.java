@@ -34,13 +34,13 @@ import java.util.concurrent.TimeoutException;
  * @author <a href="mailto:mercyblitz@gmail.com">Mercy</a>
  * @since 1.0.0
  */
-public class ExchangeFuture implements Future {
+public class ExchangeFuture implements Future<Object> {
 
     private final long createdTime;
 
     private InvocationRequest request;
 
-    private Promise promise;
+    private Promise<Object> promise;
 
     private static Map<String, ExchangeFuture> workingFutureMap = new ConcurrentHashMap<>();
 
@@ -56,7 +56,7 @@ public class ExchangeFuture implements Future {
     public ExchangeFuture(InvocationRequest request) {
         this.createdTime = System.currentTimeMillis();
         this.request = request;
-        this.promise = new DefaultPromise(new DefaultEventLoop());
+        this.promise = new DefaultPromise<>(new DefaultEventLoop());
     }
 
     @Override
@@ -92,7 +92,7 @@ public class ExchangeFuture implements Future {
         return request;
     }
 
-    public Promise getPromise() {
+    public Promise<Object> getPromise() {
         return promise;
     }
 }

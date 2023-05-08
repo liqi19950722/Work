@@ -18,6 +18,7 @@ package com.acme.middleware.rpc.client;
 
 import com.acme.middleware.rpc.codec.MessageDecoder;
 import com.acme.middleware.rpc.codec.MessageEncoder;
+import com.acme.middleware.rpc.filter.ExecuteFilter;
 import com.acme.middleware.rpc.loadbalancer.ServiceInstanceSelector;
 import com.acme.middleware.rpc.service.ServiceInstance;
 import com.acme.middleware.rpc.service.discovery.ServiceDiscovery;
@@ -33,6 +34,8 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 
 import java.lang.reflect.Proxy;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -50,6 +53,8 @@ public class RpcClient implements AutoCloseable {
     private final Bootstrap bootstrap;
 
     private final EventLoopGroup group;
+
+    private final List<ExecuteFilter> requestBeforeExecuteProcessors = new ArrayList<>();
 
     public RpcClient(ServiceDiscovery serviceDiscovery, ServiceInstanceSelector selector) {
         this.serviceDiscovery = serviceDiscovery;
@@ -105,5 +110,13 @@ public class RpcClient implements AutoCloseable {
     @Override
     public void close() throws Exception {
         group.shutdownGracefully();
+    }
+
+    public List<ExecuteFilter> getRequestBeforeExecuteProcessors() {
+        return requestBeforeExecuteProcessors;
+    }
+
+    public void addInvocationRequestBeforeExecuteProcessor(ExecuteFilter processor) {
+        requestBeforeExecuteProcessors.add(processor);
     }
 }
