@@ -16,9 +16,9 @@
  */
 package com.acme.middleware.rpc.client;
 
+import com.acme.middleware.rpc.client.filter.ExecuteFilter;
 import com.acme.middleware.rpc.codec.MessageDecoder;
 import com.acme.middleware.rpc.codec.MessageEncoder;
-import com.acme.middleware.rpc.filter.ExecuteFilter;
 import com.acme.middleware.rpc.loadbalancer.ServiceInstanceSelector;
 import com.acme.middleware.rpc.service.ServiceInstance;
 import com.acme.middleware.rpc.service.discovery.ServiceDiscovery;
@@ -54,7 +54,7 @@ public class RpcClient implements AutoCloseable {
 
     private final EventLoopGroup group;
 
-    private final List<ExecuteFilter> requestBeforeExecuteProcessors = new ArrayList<>();
+    private final List<ExecuteFilter> executeFilters = new ArrayList<>();
 
     public RpcClient(ServiceDiscovery serviceDiscovery, ServiceInstanceSelector selector) {
         this.serviceDiscovery = serviceDiscovery;
@@ -112,11 +112,11 @@ public class RpcClient implements AutoCloseable {
         group.shutdownGracefully();
     }
 
-    public List<ExecuteFilter> getRequestBeforeExecuteProcessors() {
-        return requestBeforeExecuteProcessors;
+    public List<ExecuteFilter> getExecuteFilters() {
+        return executeFilters;
     }
 
-    public void addInvocationRequestBeforeExecuteProcessor(ExecuteFilter processor) {
-        requestBeforeExecuteProcessors.add(processor);
+    public void addExecuteFilter(ExecuteFilter filter) {
+        executeFilters.add(filter);
     }
 }

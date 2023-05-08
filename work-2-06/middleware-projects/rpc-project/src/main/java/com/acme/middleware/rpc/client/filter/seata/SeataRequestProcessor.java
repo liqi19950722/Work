@@ -1,14 +1,14 @@
-package com.acme.middleware.rpc.filter.seata;
+package com.acme.middleware.rpc.client.filter.seata;
 
 import com.acme.middleware.rpc.InvocationRequest;
-import com.acme.middleware.rpc.filter.ExecuteFilter;
-import com.acme.middleware.rpc.filter.annotation.RequestFilter;
+import com.acme.middleware.rpc.annotation.RpcFilter;
+import com.acme.middleware.rpc.client.filter.ExecuteFilter;
 import io.seata.core.context.RootContext;
 import io.seata.core.model.BranchType;
 
 import java.util.Map;
 
-@RequestFilter(name = "seata")
+@RpcFilter(name = "seata")
 public class SeataRequestProcessor implements ExecuteFilter {
     @Override
     public void processInvocationRequestBeforeExecute(InvocationRequest request) {

@@ -19,6 +19,7 @@ package com.acme.middleware.rpc.transport;
 import com.acme.middleware.rpc.InvocationRequest;
 import com.acme.middleware.rpc.InvocationResponse;
 import com.acme.middleware.rpc.context.ServiceContext;
+import com.acme.middleware.rpc.server.RpcServer;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import org.apache.commons.lang3.reflect.MethodUtils;
@@ -38,9 +39,11 @@ public class InvocationRequestHandler extends SimpleChannelInboundHandler<Invoca
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private final ServiceContext serviceContext;
+    private final RpcServer rpcServer;
 
-    public InvocationRequestHandler(ServiceContext serviceContext) {
+    public InvocationRequestHandler(ServiceContext serviceContext, RpcServer rpcServer) {
         this.serviceContext = serviceContext;
+        this.rpcServer = rpcServer;
     }
 
     @Override
@@ -51,6 +54,8 @@ public class InvocationRequestHandler extends SimpleChannelInboundHandler<Invoca
         Object[] parameters = request.getParameters();
         Class[] parameterTypes = request.getParameterTypes();
 
+        beforeServiceMethodInvoke(request);
+
         Object service = serviceContext.getService(serviceName);
         Object entity = null;
         String errorMessage = null;
@@ -58,6 +63,8 @@ public class InvocationRequestHandler extends SimpleChannelInboundHandler<Invoca
             entity = MethodUtils.invokeMethod(service, methodName, parameters, parameterTypes);
         } catch (Exception e) {
             errorMessage = e.getMessage();
+        } finally {
+            afterServiceMethodInvoke(entity);
         }
 
         logger.info("Read {} and invoke the {}'s method[name:{}, param-types:{}, params:{}] : {}",
@@ -71,5 +78,13 @@ public class InvocationRequestHandler extends SimpleChannelInboundHandler<Invoca
         ctx.writeAndFlush(response);
 
         logger.info("Write and Flush {}", response);
+    }
+
+    private void afterServiceMethodInvoke(Object result) {
+        this.rpcServer.getMethodInvokeFilters().forEach(filter -> filter.afterServiceMethodInvoke(result));
+    }
+
+    private void beforeServiceMethodInvoke(InvocationRequest request) {
+        this.rpcServer.getMethodInvokeFilters().forEach(filter -> filter.beforeServiceMethodInvoke(request));
     }
 }

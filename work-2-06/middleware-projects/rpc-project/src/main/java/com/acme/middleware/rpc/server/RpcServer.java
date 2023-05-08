@@ -20,26 +20,21 @@ import ch.qos.logback.core.util.ContextUtil;
 import com.acme.middleware.rpc.codec.MessageDecoder;
 import com.acme.middleware.rpc.codec.MessageEncoder;
 import com.acme.middleware.rpc.context.ServiceContext;
+import com.acme.middleware.rpc.server.filter.MethodInvokeFilter;
 import com.acme.middleware.rpc.service.DefaultServiceInstance;
 import com.acme.middleware.rpc.service.ServiceInstance;
 import com.acme.middleware.rpc.service.discovery.ServiceDiscovery;
 import com.acme.middleware.rpc.transport.InvocationRequestHandler;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
+import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * 调用服务器
@@ -67,6 +62,7 @@ public class RpcServer implements AutoCloseable {
 
     private Channel channel;
 
+    private List<MethodInvokeFilter> methodInvokeFilters = new ArrayList<>();
     public RpcServer(String applicationName, int port) {
         this.applicationName = applicationName;
         this.port = port;
@@ -107,7 +103,7 @@ public class RpcServer implements AutoCloseable {
                     protected void initChannel(SocketChannel ch) throws Exception {
                         ch.pipeline().addLast("message-encoder", new MessageEncoder());
                         ch.pipeline().addLast("message-decoder", new MessageDecoder());
-                        ch.pipeline().addLast("request-handler", new InvocationRequestHandler(serviceContext));
+                        ch.pipeline().addLast("request-handler", new InvocationRequestHandler(serviceContext, RpcServer.this));
                     }
                 });
 
@@ -143,5 +139,13 @@ public class RpcServer implements AutoCloseable {
         if (workerGroup != null) {
             workerGroup.shutdownGracefully();
         }
+    }
+
+    public List<MethodInvokeFilter> getMethodInvokeFilters() {
+        return methodInvokeFilters;
+    }
+
+    public void addMethodInvokeFilter(MethodInvokeFilter filter) {
+        this.methodInvokeFilters.add(filter);
     }
 }

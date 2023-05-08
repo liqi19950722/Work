@@ -1,4 +1,4 @@
-package com.acme.middleware.rpc.filter;
+package com.acme.middleware.rpc.client.filter;
 
 import com.acme.middleware.rpc.InvocationRequest;
 

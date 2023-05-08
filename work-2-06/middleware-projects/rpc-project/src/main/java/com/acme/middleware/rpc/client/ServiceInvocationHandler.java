@@ -100,17 +100,17 @@ public class ServiceInvocationHandler implements InvocationHandler {
     }
 
     private void processInvocationRequestBeforeExecute(InvocationRequest request) {
-        rpcClient.getRequestBeforeExecuteProcessors()
+        rpcClient.getExecuteFilters()
                 .forEach(processor -> processor.processInvocationRequestBeforeExecute(request));
     }
 
     private void processInvocationAfterExecute(Object result, Throwable cause) {
         if (Objects.nonNull(cause)) {
-            rpcClient.getRequestBeforeExecuteProcessors()
+            rpcClient.getExecuteFilters()
                     .forEach(processor -> processor.executeFail(cause));
 
         } else {
-            rpcClient.getRequestBeforeExecuteProcessors()
+            rpcClient.getExecuteFilters()
                     .forEach(processor -> processor.executeSuccess(cause));
         }
     }
