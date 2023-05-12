@@ -17,6 +17,7 @@
 package com.acme.middleware.rpc.client;
 
 import com.acme.middleware.rpc.InvocationRequest;
+import com.acme.middleware.rpc.client.filter.ExecuteFilter;
 import com.acme.middleware.rpc.loadbalancer.ServiceInstanceSelector;
 import com.acme.middleware.rpc.service.ServiceInstance;
 import com.acme.middleware.rpc.service.discovery.ServiceDiscovery;
@@ -48,11 +49,14 @@ public class ServiceInvocationHandler implements InvocationHandler {
 
     private final ServiceInstanceSelector selector;
 
+    private final List<ExecuteFilter> executeFilters;
+
     public ServiceInvocationHandler(String serviceName, RpcClient rpcClient) {
         this.serviceName = serviceName;
         this.rpcClient = rpcClient;
         this.serviceDiscovery = rpcClient.getServiceRegistry();
         this.selector = rpcClient.getSelector();
+        this.executeFilters = rpcClient.getExecuteFilters();
     }
 
     @Override
@@ -106,12 +110,10 @@ public class ServiceInvocationHandler implements InvocationHandler {
 
     private void processInvocationAfterExecute(Object result, Throwable cause) {
         if (Objects.nonNull(cause)) {
-            rpcClient.getExecuteFilters()
-                    .forEach(processor -> processor.executeFail(cause));
+            this.executeFilters.forEach(processor -> processor.onFail(cause));
 
         } else {
-            rpcClient.getExecuteFilters()
-                    .forEach(processor -> processor.executeSuccess(cause));
+            this.executeFilters.forEach(processor -> processor.onSuccess(result));
         }
     }
 

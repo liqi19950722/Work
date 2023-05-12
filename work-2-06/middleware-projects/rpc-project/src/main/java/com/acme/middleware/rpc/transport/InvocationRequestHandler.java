@@ -20,6 +20,7 @@ import com.acme.middleware.rpc.InvocationRequest;
 import com.acme.middleware.rpc.InvocationResponse;
 import com.acme.middleware.rpc.context.ServiceContext;
 import com.acme.middleware.rpc.server.RpcServer;
+import com.acme.middleware.rpc.server.filter.MethodInvokeFilter;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import org.apache.commons.lang3.reflect.MethodUtils;
@@ -27,6 +28,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * {@link InvocationRequest} 处理器
@@ -39,11 +42,11 @@ public class InvocationRequestHandler extends SimpleChannelInboundHandler<Invoca
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private final ServiceContext serviceContext;
-    private final RpcServer rpcServer;
+    private final List<MethodInvokeFilter> filters;
 
     public InvocationRequestHandler(ServiceContext serviceContext, RpcServer rpcServer) {
         this.serviceContext = serviceContext;
-        this.rpcServer = rpcServer;
+        this.filters = Collections.unmodifiableList(rpcServer.getMethodInvokeFilters());
     }
 
     @Override
@@ -81,10 +84,10 @@ public class InvocationRequestHandler extends SimpleChannelInboundHandler<Invoca
     }
 
     private void afterServiceMethodInvoke(Object result) {
-        this.rpcServer.getMethodInvokeFilters().forEach(filter -> filter.afterServiceMethodInvoke(result));
+        this.filters.forEach(filter -> filter.afterServiceMethodInvoke(result));
     }
 
     private void beforeServiceMethodInvoke(InvocationRequest request) {
-        this.rpcServer.getMethodInvokeFilters().forEach(filter -> filter.beforeServiceMethodInvoke(request));
+        this.filters.forEach(filter -> filter.beforeServiceMethodInvoke(request));
     }
 }

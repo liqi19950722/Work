@@ -9,12 +9,11 @@ public interface ExecuteFilter {
 
 
 
-    default void executeFail(Throwable cause) {
+    default void onFail(Throwable cause) {
     }
 
 
-
-    default void executeSuccess(Throwable cause) {
+    default void onSuccess(Object result) {
     }
 
 
